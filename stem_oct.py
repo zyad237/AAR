@@ -40,6 +40,26 @@ classes = {
     'waw_end':58, 'waw_regular':59, 
     'yaa_begin':60,'yaa_end':61,'yaa_middle':62,'yaa_regular':63
 }
+classes_reversed = {
+    0: 'ain_begin', 1: 'ain_end', 2: 'ain_middle', 3: 'ain_regular',
+    4: 'alif_end', 5: 'alif_hamza', 6: 'alif_regular',
+    7: 'beh_middle', 8: 'beh_begin', 9: 'beh_end', 10: 'beh_regular',
+    11: 'dal_end', 12: 'dal_regular',
+    13: 'feh_begin', 14: 'feh_end', 15: 'feh_middle', 16: 'feh_regular',
+    17: 'heh_begin', 18: 'heh_end', 19: 'heh_middle', 20: 'heh_regular',
+    21: 'jeem_begin', 22: 'jeem_end', 23: 'jeem_middle', 24: 'jeem_regular',
+    25: 'kaf_begin', 26: 'kaf_end', 27: 'kaf_middle', 28: 'kaf_regular',
+    29: 'lam_alif', 30: 'lam_begin', 31: 'lam_end', 32: 'lam_middle', 33: 'lam_regular',
+    34: 'meem_end', 35: 'meem_middle', 36: 'meem_regular',
+    37: 'noon_begin', 38: 'noon_end', 39: 'noon_middle', 40: 'noon_regular',
+    41: 'qaf_begin', 42: 'qaf_end', 43: 'qaf_middle', 44: 'qaf_regular',
+    45: 'raa_end', 46: 'raa_regular',
+    47: 'sad_begin', 48: 'sad_end', 49: 'sad_middle', 50: 'sad_regular',
+    51: 'seen_begin', 52: 'seen_end', 53: 'seen_middle', 54: 'seen_regular',
+    55: 'tah_end', 56: 'tah_middle', 57: 'tah_regular',
+    58: 'waw_end', 59: 'waw_regular',
+    60: 'yaa_begin', 61: 'yaa_end', 62: 'yaa_middle', 63: 'yaa_regular'
+}
 
 X = []
 Y = []
@@ -57,7 +77,12 @@ for cl in classes:
 
 # Shuffle the data
 data = shuffle(data, random_state=42)
+print("Length of data:", len(data))
 X, Y, image_ids = zip(*data)  # Unzip the data into separate lists
+print("Length of X:", len(X))
+print("Length of Y:", len(Y))
+print("Length of image_ids:", len(image_ids))
+
 
 # Convert lists to numpy arrays
 X = np.array(X)
@@ -104,9 +129,9 @@ model2 = create_cnn_model()
 model3 = create_cnn_model()
 
 # Fit each model on a different subset of the data
-model1.fit(X_train, y_train, epochs=5, batch_size=32, validation_split=0.2)
-model2.fit(X_train, y_train, epochs=5, batch_size=32, validation_split=0.2)
-model3.fit(X_train, y_train, epochs=5, batch_size=32, validation_split=0.2)
+model1.fit(X_train, y_train, epochs=1, batch_size=32, validation_split=0.2)
+model2.fit(X_train, y_train, epochs=1, batch_size=32, validation_split=0.2)
+model3.fit(X_train, y_train, epochs=1, batch_size=32, validation_split=0.2)
 
 # Make predictions using individual models
 preds1 = model1.predict(X_test)
@@ -117,7 +142,11 @@ preds3 = model3.predict(X_test)
 ensemble_preds = np.argmax(preds1 + preds2 + preds3, axis=1)
 
 # Create a DataFrame to store predictions with image IDs
-predictions_df = pd.DataFrame({'Image_ID': image_ids, 'True_Label': y_test, 'Ensemble_Prediction': ensemble_preds})
+y_test = [classes_reversed for label, classes_reversed in classes_reversed.items()]
+ensemble_preds = [classes_reversed for label, classes_reversed in classes_reversed.items()]
+
+# Create a DataFrame to store predictions with class names
+predictions_df = pd.DataFrame({'True_Label': y_test, 'Ensemble_Prediction': ensemble_preds})
 
 # Save the DataFrame to a CSV file
 predictions_df.to_csv('ensemble_predictions.csv', index=False)
