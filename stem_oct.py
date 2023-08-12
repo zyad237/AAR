@@ -1,3 +1,10 @@
+# The "Arabic Alphabet Recognition" project aims to develop an accurate system capable of recognizing characters from the Arabic alphabet.
+# This project uses multiple machine learning techniques, including Convolutional Neural Networks (CNNs), 
+# to create a model that can accurately identify different Arabic characters from input images. 
+# Moreover, tons of information and images were used to achieve the required accuracy of the model.
+# Finally, the predictions will be shared in a CSV file. 
+
+
 import numpy as np
 import os
 import pandas as pd
@@ -34,31 +41,29 @@ classes = {
     'yaa_begin':60,'yaa_end':61,'yaa_middle':62,'yaa_regular':63
 }
 
-# Load images and labels
 X = []
 Y = []
+image_ids = []
+data = []  # List to store tuples of (image, label, image_id)
 
 for cl in classes:
     pth = os.path.join(path, cl)
     for img_name in os.listdir(pth):
+        img_id = img_name.split('.')[0]  # Get the image ID from the filename
         img = cv2.imread(os.path.join(pth, img_name), cv2.IMREAD_GRAYSCALE)
         img = cv2.resize(img, (64, 64))  # Resize the image for consistency
-        X.append(img)
-        Y.append(classes[cl])
+        label = classes[cl]
+        data.append((img, label, img_id))
+
+# Shuffle the data
+data = shuffle(data, random_state=42)
+X, Y, image_ids = zip(*data)  # Unzip the data into separate lists
 
 # Convert lists to numpy arrays
 X = np.array(X)
 Y = np.array(Y)
 
-# Shuffle the data
-X, Y = shuffle(X, Y, random_state=42)
-
 # Split the dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
-
-print("X_train shape:", X_train.shape)
-print("X_test shape:", X_test.shape)
-
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
 print("X_train shape:", X_train.shape)
@@ -74,10 +79,6 @@ X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_
 
 print("X_train shape:", X_train.shape)
 print("X_test shape:", X_test.shape)
-
-# Normalize pixel values to the range [0, 1]
-X_train = X_train.astype('float32') / 255.0
-X_test = X_test.astype('float32') / 255.0
 
 # Create individual CNN models
 def create_cnn_model():
@@ -115,8 +116,8 @@ preds3 = model3.predict(X_test)
 # Combine predictions using majority voting
 ensemble_preds = np.argmax(preds1 + preds2 + preds3, axis=1)
 
-# Create a DataFrame to store predictions
-predictions_df = pd.DataFrame({'True_Label': y_test, 'Ensemble_Prediction': ensemble_preds})
+# Create a DataFrame to store predictions with image IDs
+predictions_df = pd.DataFrame({'Image_ID': image_ids, 'True_Label': y_test, 'Ensemble_Prediction': ensemble_preds})
 
 # Save the DataFrame to a CSV file
 predictions_df.to_csv('ensemble_predictions.csv', index=False)
