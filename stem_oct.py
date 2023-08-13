@@ -17,7 +17,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
 
 # Define the path to your dataset
-path = "stem-oct-cs-club-1/test/test/"
+path ="stem-oct-cs-club-1/train/isolated_alphabets_per_alphabet/"
 
 # Define the classes and their corresponding numerical labels
 classes = {
@@ -61,96 +61,49 @@ classes_reversed = {
     60: 'yaa_begin', 61: 'yaa_end', 62: 'yaa_middle', 63: 'yaa_regular'
 }
 
-X = []
-Y = []
-image_ids = []
-data = []  # List to store tuples of (image, label, image_id)
-
+# Load and preprocess the dataset
+data = []
 for cl in classes:
     pth = os.path.join(path, cl)
     for img_name in os.listdir(pth):
-        img_id = img_name.split('.')[0]  # Get the image ID from the filename
+        img_id = img_name.split('.')[0]
         img = cv2.imread(os.path.join(pth, img_name), cv2.IMREAD_GRAYSCALE)
-        img = cv2.resize(img, (64, 64))  # Resize the image for consistency
+        img = cv2.resize(img, (64, 64))
         label = classes[cl]
         data.append((img, label, img_id))
 
-# Shuffle the data
 data = shuffle(data, random_state=42)
-print("Length of data:", len(data))
-X, Y, image_ids = zip(*data)  # Unzip the data into separate lists
-print("Length of X:", len(X))
-print("Length of Y:", len(Y))
-print("Length of image_ids:", len(image_ids))
-
-
-# Convert lists to numpy arrays
+X, Y, image_ids = zip(*data)
 X = np.array(X)
 Y = np.array(Y)
+X = X.reshape(X.shape[0], 64, 64, 1)  # Reshape for Conv2D input
 
 # Split the dataset into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
-
-print("X_train shape:", X_train.shape)
-print("X_test shape:", X_test.shape)
 
 # Normalize pixel values to the range [0, 1]
 X_train = X_train.astype('float32') / 255.0
 X_test = X_test.astype('float32') / 255.0
 
+# Build the CNN model
+model = Sequential([
+    Conv2D(32, (3, 3), activation='relu', input_shape=(64, 64, 1)),
+    MaxPooling2D((2, 2)),
+    Conv2D(64, (3, 3), activation='relu'),
+    MaxPooling2D((2, 2)),
+    Conv2D(128, (3, 3), activation='relu'),
+    MaxPooling2D((2, 2)),
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dropout(0.5),
+    Dense(len(classes), activation='softmax')
+])
 
-# Split the dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-print("X_train shape:", X_train.shape)
-print("X_test shape:", X_test.shape)
+# Train the model
+model.fit(X_train, y_train, epochs=5, batch_size=32, validation_split=0.2)
 
-# Create individual CNN models
-def create_cnn_model():
-    model = Sequential([
-        Conv2D(32, (3, 3), activation='relu', input_shape=(64, 64, 1)),
-        MaxPooling2D((2, 2)),
-        Conv2D(64, (3, 3), activation='relu'),
-        MaxPooling2D((2, 2)),
-        Conv2D(128, (3, 3), activation='relu'),
-        MaxPooling2D((2, 2)),
-        Flatten(),
-        Dense(128, activation='relu'),
-        Dropout(0.5),
-        Dense(len(classes), activation='softmax')
-    ])
-    
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-    return model
-
-# Create ensemble of CNN models
-model1 = create_cnn_model()
-model2 = create_cnn_model()
-model3 = create_cnn_model()
-
-# Fit each model on a different subset of the data
-model1.fit(X_train, y_train, epochs=1, batch_size=32, validation_split=0.2)
-model2.fit(X_train, y_train, epochs=1, batch_size=32, validation_split=0.2)
-model3.fit(X_train, y_train, epochs=1, batch_size=32, validation_split=0.2)
-
-# Make predictions using individual models
-preds1 = model1.predict(X_test)
-preds2 = model2.predict(X_test)
-preds3 = model3.predict(X_test)
-
-# Combine predictions using majority voting
-ensemble_preds = np.argmax(preds1 + preds2 + preds3, axis=1)
-
-# Create a DataFrame to store predictions with image IDs
-y_test = [classes_reversed for label, classes_reversed in classes_reversed.items()]
-ensemble_preds = [classes_reversed for label, classes_reversed in classes_reversed.items()]
-
-# Create a DataFrame to store predictions with class names
-predictions_df = pd.DataFrame({'True_Label': y_test, 'Ensemble_Prediction': ensemble_preds})
-
-# Save the DataFrame to a CSV file
-predictions_df.to_csv('ensemble_predictions.csv', index=False)
-
-# Evaluate ensemble accuracy
-ensemble_accuracy = accuracy_score(y_test, ensemble_preds)
-print("Ensemble Accuracy:", ensemble_accuracy)
+# Evaluate the model on the test set
+accuracy = model.evaluate(X_test, y_test)[1]
+print("Accuracy:", accuracy * 100)
